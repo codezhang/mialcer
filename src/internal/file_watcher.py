@@ -1,7 +1,7 @@
-import sys, time, os, threading
+import sys, os, threading
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
-class FileChangeWatcher:
+class FileWatcher:
     def __init__(self, target = None,\
       file_create_listener = None,\
       file_change_listener = None,\
