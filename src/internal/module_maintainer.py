@@ -1,4 +1,4 @@
-import os, shutil, time
+import os, shutil, time, imp
 class ModuleMaintainer:
     def __init__(self):
         self.module_map = {}
@@ -13,12 +13,16 @@ class ModuleMaintainer:
                 m._import(item)
             """
         except Exception, e:
-            pass
+            import traceback
+            traceback.print_exc()
+            #pass
         return m
     def put_module(self, path, module_name = None):
+        if not path.endswith('.py'):
+            return None
         if module_name == None:
             module_name = os.path.split(path)[1]
-            if module_name.endsWith('.py'):
+            if module_name.endswith('.py'):
                 module_name = module_name[:-3]
         if module_name in self.module_map:
             return None

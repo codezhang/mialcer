@@ -1,4 +1,4 @@
-import sys, os, threading
+import sys, os, threading, time
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
 class FileWatcher:
