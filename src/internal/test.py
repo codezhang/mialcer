@@ -6,9 +6,9 @@ import web
 
 class index:
     def GET(self):
-        return "Hello, world! 45"
+        return "Hello, world! 57"
 
-class TestPortal:
+class Portal:
     def __init__(self):
         self.urls = (
                         '/test', 'index'

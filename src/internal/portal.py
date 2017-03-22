@@ -5,35 +5,32 @@ sys.setdefaultencoding('utf-8')
 import web, threading, time
 from file_watcher import FileWatcher
 from module_maintainer import ModuleMaintainer
+from request_thread_pool import RequestThreadPool
 p = None
 fw = None
-x = None
+rtp = RequestThreadPool()
+m = ModuleMaintainer()
+
 class index:
     def GET(self):
         return "Hello, world!"
-def request_sub_app(module_name, path):
-    global x
-    x = p.sub_app[module_name].request(path).data
+
 class plugin:
     def GET(self, path):
-        global x
-        module_name = path.split('/')[0]
-        print module_name, p.sub_app
-        if module_name in p.sub_app:
-            threading.Thread(target = request_sub_app,\
-              args=(module_name, '/' + '/'.join(path.split('/')[1:]))).start()
-            limit = 120
-            while x == None and limit > 0:
-                time.sleep(1)
-                limit -= 1
-            if x == None:
-                return "error"
-            else:
-                temp_x = x
-                x = None
-                return temp_x
-        return 'can not handle ' + path
-m = ModuleMaintainer()
+        def sub_app_request(sub_app, path):
+            return sub_app.request(path).data
+        try:
+            module_name = path.split('/')[0]
+            rid, semaphore = rtp.new_request()
+            rtp.request(rid, sub_app_request, (p.sub_app[module_name], '/' +\
+              '/'.join(path.split('/')[1:])), semaphore)
+            semaphore.acquire()
+            return rtp.fetch_result(rid)
+        except Exception, e:
+            import traceback
+            traceback.print_exc()
+            return 'can not handle ' + path
+
 def handle_file_create(event):
     global p
     global fw
@@ -41,7 +38,7 @@ def handle_file_create(event):
     if new_module_name == None:
         return
     _, module, _ = m.module_map[new_module_name]
-    entry_class = getattr(module, 'TestPortal', None)
+    entry_class = getattr(module, 'Portal', None)
     p.sub_app[new_module_name] = entry_class().app
 class Portal:
     def __init__(self):
@@ -49,17 +46,25 @@ class Portal:
             '/', 'index',
             '/api/(.+)', 'plugin'
         )
-        self.app = web.application(self.urls, globals())
-        session = web.session.Session(self.app, web.session.DiskStore('sessions'), initializer = {'params_index': 0})
+        class PortalApplication(web.application):
+            def run(self, port = 8080, *middelware):
+                func = self.wsgifunc(*middelware)
+                return web.httpserver.runsimple(func, ('0.0.0.0', port))
+        self.app = PortalApplication(self.urls, globals())
+        session = web.session.Session(self.app,\
+          web.session.DiskStore('sessions'),\
+          initializer = {'params_index': 0})
         def session_hook():
             web.ctx.session = session
         session_preprocessor = web.loadhook(session_hook)
         self.app.add_processor(session_preprocessor)
         self.sub_app = {}
 
+
 if __name__ == "__main__":
     p = Portal()
     fw = FileWatcher(file_change_listener = handle_file_create)
     fw.start()
-    p.app.run()
+    p.app.run(8888)
     fw.stop()
+    rtp.stop_all()
