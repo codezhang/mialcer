@@ -1,6 +1,6 @@
 import threading, time, uuid
 class RequestThreadPool:
-    def __init__(self, limit = 512):
+    def __init__(self, limit = 512, scan_seconds = 0.05):
         """
         request_map
         key: thread uuid
@@ -15,6 +15,7 @@ class RequestThreadPool:
         self.result_map = {}
         self.limit = limit
         self.command_map = {'run': True}
+        self.scan_seconds = scan_seconds
         self._thread_loop()
     def new_request(self):
         return str(uuid.uuid1()), threading.Semaphore(0)
@@ -27,7 +28,8 @@ class RequestThreadPool:
             result_map[request_id] = result
             del execution_map[request_id]
             semaphore.release()
-        def scan_request_map(request_map, limit, command, result_map):
+        def scan_request_map(request_map, limit, command,\
+          result_map, scan_seconds):
             execution_map = {}
             while command['run'] == True:
                 for request_id, request in request_map.items():
@@ -40,10 +42,10 @@ class RequestThreadPool:
                       args = (request, execution_map,\
                       request_id, result_map)).start()
                     del request_map[request_id]
-                time.sleep(0.1)
+                time.sleep(scan_seconds)
         threading.Thread(target = scan_request_map, args = \
           (self.request_map, self.limit, self.command_map,\
-          self.result_map)).start()
+          self.result_map, self.scan_seconds)).start()
     def fetch_result(self, rid):
         result = self.result_map[rid]
         del self.result_map[rid]

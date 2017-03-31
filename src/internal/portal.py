@@ -40,6 +40,27 @@ def handle_file_create(event):
     _, module, _ = m.module_map[new_module_name]
     entry_class = getattr(module, 'Portal', None)
     p.sub_app[new_module_name] = entry_class().app
+
+def handle_file_update(event):
+    global p
+    global fw
+    module_name = m.reload_module(event.src_path)
+    if module_name == None:
+        return
+    _, module, _ = m.module_map[module_name]
+    entry_class = getattr(module, 'Portal', None)
+    p.sub_app[module_name] = entry_class().app
+
+def handle_file_destroy(event):
+    global p
+    global fw
+    del m.reverse_map[event.src_path]
+    module_name = m.module_name_for_path(event.src_path)
+    if module_name == None:
+        return
+    del m.module_map[module_name]
+    del p.sub_app[module_name]
+
 class Portal:
     def __init__(self):
         self.urls = (
@@ -63,7 +84,9 @@ class Portal:
 
 if __name__ == "__main__":
     p = Portal()
-    fw = FileWatcher(file_change_listener = handle_file_create)
+    fw = FileWatcher(file_create_listener = handle_file_create,\
+      file_change_listener = handle_file_update,\
+      file_destroy_listener = handle_file_destroy)
     fw.start()
     p.app.run(8888)
     fw.stop()
