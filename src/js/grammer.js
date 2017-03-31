@@ -315,7 +315,6 @@ function weave_path(content, paths, curPath) {
 var multiline_pattern = RegExp('\n[\t ]*\#[^\#\n]*\#[^\n]*\n', 'gm')
 var indent_pattern = RegExp('\n[\t ]*\#')
 var indent_append_pattern = RegExp('\n?[\t ]*\#([^\#\n]*)', 'gm')
-var indent_append_substitution = '\n' + indent + '\#$1'
 /**
  * weave_yaml -> yaml
  */
@@ -327,7 +326,7 @@ function unweave_yaml(input) {
   for (var i = 0; i < multiline_pattern.length; ++i) {
     line = multiline_pattern[i]
     indent = line.match(indent_pattern)[0]
-    input.replace(line, line.replace(indent_append_pattern, indent_append_substitution))
+    input.replace(line, line.replace(indent_append_pattern, '\n' + indent + '\#$1'))
   }
   return input;
 }
